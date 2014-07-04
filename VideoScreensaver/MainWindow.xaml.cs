@@ -25,6 +25,8 @@ namespace VideoScreensaver {
 
         private Point? lastMousePosition = null;  // Workaround for "MouseMove always fires when maximized" bug.
 
+        private int currentMediaIndex = 0;
+
         private double volume {
             get { return FullScreenMedia.Volume; }
             set {
@@ -46,7 +48,10 @@ namespace VideoScreensaver {
         private void ScrKeyDown(object sender, KeyEventArgs e) {
             switch (e.Key) {
                 case Key.Right:
-                    SetNewMedia((String)videoList[new Random().Next(videoList.Count)]);
+                    NextMediaItem();
+                    break;
+                case Key.Left:
+                    PreviousMediaItem();
                     break;
                 case Key.Up:
                 case Key.VolumeUp:
@@ -104,10 +109,11 @@ namespace VideoScreensaver {
                 foreach (var f in files)
                 {
                     if (f.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase)
-                     || f.EndsWith(".mov", StringComparison.OrdinalIgnoreCase))
+                     || f.EndsWith(".mov", StringComparison.OrdinalIgnoreCase)
+                     || f.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase))
                         videoList.Add(f);
                 }
-
+                
                 Console.WriteLine("{0} files found.", videoList.Count);
             }
             catch (UnauthorizedAccessException UAEx)
@@ -122,11 +128,14 @@ namespace VideoScreensaver {
 
         private void OnLoaded(object sender, RoutedEventArgs e) {
             String videoPath = PreferenceManager.ReadVideoSettings();
-            GetAllVideos(videoPath);
+
             if (videoPath.Length == 0) {
                 ShowError("This screensaver needs to be configured before any video is displayed.");
             } else {
-                FullScreenMedia.Source = new System.Uri((String)videoList[new Random().Next(videoList.Count)]);
+                GetAllVideos(videoPath);
+                videoList = ShuffleStringArray(videoList);
+                GeneralData.Text = "File count: " + videoList.Count;
+                SetNewMedia((String)videoList[currentMediaIndex]);
             }
         }
 
@@ -139,14 +148,71 @@ namespace VideoScreensaver {
         }
 
         private void MediaEnded(object sender, RoutedEventArgs e) {
-            SetNewMedia((String)videoList[new Random().Next(videoList.Count)]);
+            NextMediaItem();
             //FullScreenMedia.Position = new TimeSpan(0);
+        }
+
+        private void NextMediaItem()
+        {
+            if (currentMediaIndex >= videoList.Count-1)
+            {
+                currentMediaIndex = 0;
+            }
+            else
+            {
+                currentMediaIndex++;
+            }
+            
+            SetNewMedia((String)videoList[currentMediaIndex]);
+        }
+
+        private void PreviousMediaItem()
+        {
+            if (currentMediaIndex <= 0)
+            {
+                currentMediaIndex = videoList.Count - 1;
+            }
+            else
+            {
+                currentMediaIndex--;
+            }
+
+            SetNewMedia((String)videoList[currentMediaIndex]);
         }
 
         private void SetNewMedia(String fileName)
         {
             FullScreenMedia.Source = new System.Uri(fileName);
             MediaFileName.Text = fileName;
+        }
+
+        private ArrayList ShuffleStringArray(ArrayList a)
+        {
+            Random random = new Random();
+            List<KeyValuePair<int, string>> list = new List<KeyValuePair<int, string>>(a.Count);
+
+            // Add all strings from array
+            // Add new random int each time
+            foreach (string s in a)
+            {
+                list.Add(new KeyValuePair<int, string>(random.Next(), s));
+            }
+
+            // Sort the list by the random number
+            var sorted = from item in list
+                         orderby item.Key
+                         select item;
+
+            // Allocate new string array
+            ArrayList result = new ArrayList(a.Count);
+            
+            // Copy values to array
+            foreach (KeyValuePair<int, string> pair in sorted)
+            {
+                result.Add(pair.Value);
+            }
+            // Return copied array
+            return result;
         }
     }
 }
