@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
@@ -17,7 +20,11 @@ namespace VideoScreensaver {
     /// </summary>
     public partial class MainWindow : Window {
         private bool preview;
+
+        private ArrayList videoList;
+
         private Point? lastMousePosition = null;  // Workaround for "MouseMove always fires when maximized" bug.
+
         private double volume {
             get { return FullScreenMedia.Volume; }
             set {
@@ -27,6 +34,7 @@ namespace VideoScreensaver {
         }
 
         public MainWindow(bool preview) {
+            videoList = new ArrayList();
             InitializeComponent();
             this.preview = preview;
             FullScreenMedia.Volume = PreferenceManager.ReadVolumeSetting();
@@ -37,6 +45,9 @@ namespace VideoScreensaver {
 
         private void ScrKeyDown(object sender, KeyEventArgs e) {
             switch (e.Key) {
+                case Key.Right:
+                    SetNewMedia((String)videoList[new Random().Next(videoList.Count)]);
+                    break;
                 case Key.Up:
                 case Key.VolumeUp:
                     volume += 0.1;
@@ -84,12 +95,38 @@ namespace VideoScreensaver {
             }
         }
 
+        private void GetAllVideos(String videoPath)
+        {
+            try
+            {
+                IEnumerable<String> files = Directory.EnumerateFiles(videoPath, "*", SearchOption.AllDirectories);
+                            
+                foreach (var f in files)
+                {
+                    if (f.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase)
+                     || f.EndsWith(".mov", StringComparison.OrdinalIgnoreCase))
+                        videoList.Add(f);
+                }
+
+                Console.WriteLine("{0} files found.", videoList.Count);
+            }
+            catch (UnauthorizedAccessException UAEx)
+            {
+                Console.WriteLine(UAEx.Message);
+            }
+            catch (PathTooLongException PathEx)
+            {
+                Console.WriteLine(PathEx.Message);
+            }
+        }
+
         private void OnLoaded(object sender, RoutedEventArgs e) {
-            List<String> videoPaths = PreferenceManager.ReadVideoSettings();
-            if (videoPaths.Count == 0) {
+            String videoPath = PreferenceManager.ReadVideoSettings();
+            GetAllVideos(videoPath);
+            if (videoPath.Length == 0) {
                 ShowError("This screensaver needs to be configured before any video is displayed.");
             } else {
-                FullScreenMedia.Source = new System.Uri(videoPaths[new Random().Next(videoPaths.Count)]);
+                FullScreenMedia.Source = new System.Uri((String)videoList[new Random().Next(videoList.Count)]);
             }
         }
 
@@ -102,7 +139,14 @@ namespace VideoScreensaver {
         }
 
         private void MediaEnded(object sender, RoutedEventArgs e) {
-            FullScreenMedia.Position = new TimeSpan(0);
+            SetNewMedia((String)videoList[new Random().Next(videoList.Count)]);
+            //FullScreenMedia.Position = new TimeSpan(0);
+        }
+
+        private void SetNewMedia(String fileName)
+        {
+            FullScreenMedia.Source = new System.Uri(fileName);
+            MediaFileName.Text = fileName;
         }
     }
 }

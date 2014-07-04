@@ -15,17 +15,12 @@ namespace VideoScreensaver {
         public const string VIDEO_PREFS_FILE = "Videos";
         public const string VOLUME_PREFS_FILE = "Volume";
 
-        public static List<String> ReadVideoSettings() {
-            List<String> videos = new List<String>();
-            string videoStr = ReadStringValue(VIDEO_PREFS_FILE);
-            if (videoStr.Length > 0) {
-                videos.AddRange(videoStr.Split('\n'));
-            }
-            return videos;
+        public static String ReadVideoSettings() {
+            return ReadStringValue(VIDEO_PREFS_FILE);
         }
 
-        public static void WriteVideoSettings(List<String> videoPaths) {
-            WriteStringValue(VIDEO_PREFS_FILE, String.Join<object>("\n", videoPaths));
+        public static void WriteVideoSettings(String videoPath) {
+            WriteStringValue(VIDEO_PREFS_FILE, videoPath);
         }
 
         public static double ReadVolumeSetting() {

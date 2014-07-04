@@ -77,15 +77,19 @@ namespace VideoScreensaver
         }
 
         private void ConfigureScreensaver() {
-            List<String> videoUri = PreferenceManager.ReadVideoSettings();
-            Microsoft.Win32.OpenFileDialog openDialog = new Microsoft.Win32.OpenFileDialog();
-            openDialog.Multiselect = true;
-            openDialog.FileName = (videoUri.Count > 0) ? videoUri[0] : "";
-            openDialog.Title = "Select video files to display...";
-            if (openDialog.ShowDialog() == true) {
-                List<String> videos = new List<String>();
-                videos.AddRange(openDialog.FileNames);
-                PreferenceManager.WriteVideoSettings(videos);
+            String videoUri = PreferenceManager.ReadVideoSettings();
+            System.Windows.Forms.FolderBrowserDialog folderDialog = new System.Windows.Forms.FolderBrowserDialog();
+            //Microsoft.Win32.OpenFileDialog openDialog = new Microsoft.Win32.OpenFileDialog();
+            //openDialog.Multiselect = true;
+            //openDialog.FileName = (videoUri.Count > 0) ? videoUri[0] : "";
+            //openDialog.Title = "Select root folder containing video files";
+            folderDialog.SelectedPath = videoUri;
+
+            if (folderDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK) {
+                //List<String> videos = new List<String>();
+
+                //videos.AddRange(openDialog.FileNames);
+                PreferenceManager.WriteVideoSettings(folderDialog.SelectedPath);
             }
         }
     }
