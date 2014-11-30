@@ -10,7 +10,10 @@ namespace VideoScreensaver
     [Serializable]
     class VideoList : ArrayList
     {
-        public ArrayList ShuffleFilePaths()
+        public VideoList(int count=0)
+            : base(count) { }
+
+        public VideoList ShuffleFilePaths()
         {
             Random random = new Random();
 
@@ -29,7 +32,7 @@ namespace VideoScreensaver
                          select item;
 
             // Allocate new string array
-            ArrayList result = new ArrayList(this.Count);
+            VideoList result = new VideoList(this.Count);
 
             // Copy values to array
             foreach (KeyValuePair<int, string> pair in sorted)
