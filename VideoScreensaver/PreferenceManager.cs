@@ -3,6 +3,8 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Reflection;
+using log4net;
+using log4net.Config;
 
 namespace VideoScreensaver {
     // Manages persistent storage for the screensaver.
@@ -11,28 +13,49 @@ namespace VideoScreensaver {
     // Using the registry directly.
     static class PreferenceManager {
 
+        // Logger
+        private static readonly ILog logger =
+           LogManager.GetLogger(typeof(PreferenceManager));
+
+
         public const string BASE_KEY = "VideoScreensaver";
         public const string VIDEO_PREFS_FILE = "Videos";
         public const string VOLUME_PREFS_FILE = "Volume";
 
+        static PreferenceManager()
+        {
+            BasicConfigurator.Configure();
+            logger.Info("Start");
+        }
+
         public static String ReadVideoSettings() {
-            return ReadStringValue(VIDEO_PREFS_FILE);
+            string  strPrefsFile = ReadStringValue(VIDEO_PREFS_FILE);
+            logger.InfoFormat("VIDEO_PREFS_FILE = {0}", strPrefsFile);
+            return strPrefsFile;
         }
 
         public static void WriteVideoSettings(String videoPath) {
+            logger.InfoFormat("Write VIDEO_PREFS_FILE = {0}", videoPath);
             WriteStringValue(VIDEO_PREFS_FILE, videoPath);
         }
 
         public static double ReadVolumeSetting() {
-            try {
-                return Convert.ToDouble(ReadStringValue(VOLUME_PREFS_FILE));
+            string strVolume = ReadStringValue(VOLUME_PREFS_FILE);
+            logger.InfoFormat("VOLUME_PREFS_FILE = {0}", strVolume);
+            if (strVolume.Length > 0)
+            {
+                try
+                {
+                    return Convert.ToDouble(strVolume);
+                }
+                catch (System.FormatException) { }
+                catch (System.OverflowException) { }
             }
-            catch (System.FormatException) { }
-            catch (System.OverflowException) { }
             return 0;
         }
 
         public static void WriteVolumeSetting(double volume) {
+            logger.InfoFormat("Write VOLUME_PREFS_FILE = {0}", volume.ToString());
             WriteStringValue(VOLUME_PREFS_FILE, volume.ToString());
         }
 
