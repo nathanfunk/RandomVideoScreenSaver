@@ -27,6 +27,8 @@ namespace VideoScreensaver {
         private static readonly ILog logger =
            LogManager.GetLogger(typeof(MainWindow));
 
+        public bool Debug { get; set; }
+
         private bool preview;
 
         private VideoList videoList;
@@ -34,6 +36,8 @@ namespace VideoScreensaver {
         private Point? lastMousePosition = null;  // Workaround for "MouseMove always fires when maximized" bug.
 
         private int currentMediaIndex = 0;
+
+        private bool showingInfoDialog = false;     // TRUE if showing properties for a picture
 
         private double volume {
             get { return FullScreenMedia.Volume; }
@@ -106,6 +110,7 @@ namespace VideoScreensaver {
                     break;
 
                 default:
+                    logger.InfoFormat("ScrKeyDown - Ending due to unexpected Windows key message {0}", e.ToString());
                     EndFullScreensaver();
                     break;
             }
@@ -113,11 +118,15 @@ namespace VideoScreensaver {
 
         private void ShowInfo()
         {
+            showingInfoDialog = true;
+
             PropertiesControl infoControl = new PropertiesControl();
 
             infoControl.PhotoTitle = currentMediaTitle;
             infoControl.PhotoTimeTaken = currentMediaDateTaken;
             infoControl.PhotoFilePath = currentMediaPath;
+
+            logger.InfoFormat("ShowInfo for {0} - {1}", currentMediaIndex, currentMediaPath);
 
             Window propertiesWindow = new Window()
             {
@@ -131,6 +140,12 @@ namespace VideoScreensaver {
             };
 
             propertiesWindow.ShowDialog();
+            logger.Info("ShowInfo dismissed");
+            showingInfoDialog = false;
+            // don't immediately see a mouse move
+            lastMousePosition = null;
+            // Advance since we've stopped auto advancing while the properties dialog was up
+            NextMediaItem();
         }
 
         private void ScrMouseWheel(object sender, MouseWheelEventArgs e) {
@@ -141,13 +156,23 @@ namespace VideoScreensaver {
             // Workaround for bug in WPF.
             Point mousePosition = e.GetPosition(this);
             if (lastMousePosition != null && mousePosition != lastMousePosition) {
-                EndFullScreensaver();
+                logger.Info("Ending due to mouse movement");
+                // To simply debugging, don't actual exit if in debug mode
+                if (!Debug)
+                {
+                    EndFullScreensaver();
+                }
             }
             lastMousePosition = mousePosition;
         }
 
         private void ScrMouseDown(object sender, MouseButtonEventArgs e) {
-            EndFullScreensaver();
+            logger.Info("Ending due to mouse click");
+            // To simply debugging, don't actual exit if in debug mode
+            if (!Debug)
+            {
+                EndFullScreensaver();
+            }
         }
 
         private void ScrSizeChange(object sender, SizeChangedEventArgs e) {
@@ -199,12 +224,18 @@ namespace VideoScreensaver {
         private void OnLoaded(object sender, RoutedEventArgs e) {
             String videoPath = PreferenceManager.ReadVideoSettings();
 
-            if (videoPath.Length == 0) {
+            logger.Info("OnLoaded");
+
+            if (videoPath.Length == 0)
+            {
                 // Default to Pictures
                 videoPath = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
             }
-            
-            if (!Directory.Exists(videoPath)) {
+
+            logger.InfoFormat("Path - {0}", videoPath);
+
+            if (!Directory.Exists(videoPath))
+            {
                 ShowError("This screensaver needs to be configured before anthing is displayed.");
             }
             else
@@ -269,7 +300,10 @@ namespace VideoScreensaver {
         }
 
         private void MediaEnded(object sender, RoutedEventArgs e) {
-            NextMediaItem();
+            logger.Info("MediaEnded");
+            if (!showingInfoDialog) {
+                NextMediaItem();
+            }
             //FullScreenMedia.Position = new TimeSpan(0);
         }
 
@@ -313,30 +347,44 @@ namespace VideoScreensaver {
             FullScreenMedia.Source = new System.Uri(fileName);
 
             // Read Metadata from the photo
-            using (ExifReader reader = new ExifReader(fileName))
+            logger.InfoFormat("SetNewMedia - Extract meta data from {0}", fileName);
+
+            try
             {
-                // Extract the tag data using the ExifTags enumeration
+                    using (ExifReader reader = new ExifReader(fileName))
+                    {
+                        // Extract the tag data using the ExifTags enumeration
 
-                try
-                {
+                        try
+                        {
 
-                    gotDate = reader.GetTagValue<DateTime>(ExifTags.DateTimeDigitized,
-                                                out currentMediaDateTaken);
-                }
-                catch(InvalidCastException)
-                {
-                    gotDate = false;
-                    currentMediaDateTaken = DateTime.MinValue;
-                }
+                            gotDate = reader.GetTagValue<DateTime>(ExifTags.DateTimeDigitized,
+                                                        out currentMediaDateTaken);
+                            logger.InfoFormat("SetNewMedia - Date {0}", currentMediaDateTaken.ToString());
+                        }
+                        catch (InvalidCastException)
+                        {
+                            gotDate = false;
+                            currentMediaDateTaken = DateTime.MinValue;
+                            logger.Info("SetNewMedia - No Date Taken");
+                        }
 
-                try
-                {
-                    currentMediaTitle = GetTitle(fileName);
+                        try
+                        {
+                            currentMediaTitle = GetTitle(fileName);
+                            logger.InfoFormat("SetNewMedia - Title {0}", currentMediaTitle);
+                        }
+                        catch (InvalidCastException)
+                        {
+                            gotCaption = false;
+                            currentMediaTitle = "";
+                            logger.Info("SetNewMedia - No Title");
+                        }
+                    }
                 }
-                catch (InvalidCastException)
+                catch(ExifLibException exp)
                 {
-                    gotCaption = false;
-                    currentMediaTitle = "";
+                    logger.ErrorFormat("SetNewMedia Reading EXIF info from {0}", fileName, exp.Message);
                 }
 
                 if (gotDate || gotCaption)
@@ -350,7 +398,8 @@ namespace VideoScreensaver {
                     // No EXIF properties - just use file name
                     PictureInfo.Text = fileName;
                 }
-            }
+          
+            logger.Info("SetNewMedia - Exit");
         }
 
         // Get the string Title if present in the file

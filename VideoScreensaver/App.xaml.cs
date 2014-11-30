@@ -35,6 +35,8 @@ namespace VideoScreensaver
         private static extern int SetWindowLong(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
 
         private void OnStartup(object sender, StartupEventArgs e) {
+            bool debug = false;
+
             if (e.Args.Length > 0) {
                 switch (e.Args[0].Substring(0, 2).ToLower()) {
                     case "/c":
@@ -46,9 +48,15 @@ namespace VideoScreensaver
                         // Previewing inside of a Win32 window specified by args[1].
                         ShowInParent(new IntPtr(Convert.ToInt32(e.Args[1])));
                         return;
+                    case "/d":
+                        // Debugging - treat mouse movement differently
+                        debug = true;
+                        break;
                 }
             }
-            new MainWindow(false).Show();
+            MainWindow w = new MainWindow(false);
+            w.Debug = debug;
+            w.Show();
         }
 
         private void ShowInParent(IntPtr parentHwnd) {
