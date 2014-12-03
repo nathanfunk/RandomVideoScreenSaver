@@ -29,21 +29,27 @@ namespace VideoScreensaver
         public DateTime PhotoTimeTaken { get; set; }
         public string   PhotoFilePath { get; set; }
 
-        public void Show()
+        protected void OnLoaded(Object sender, RoutedEventArgs e)
         {
-            Title.Text = PhotoTitle;
+            Title.Text = PhotoTitle.Length > 0 ? PhotoTitle : "No Title";
             Title.Visibility = System.Windows.Visibility.Visible;
 
             TimeTaken.Text = PhotoTimeTaken.ToLongDateString();
             TimeTaken.Visibility = System.Windows.Visibility.Visible;
 
-            Path.Text = PhotoTitle;
+            Path.Text = PhotoFilePath;
             Path.Visibility = System.Windows.Visibility.Visible;
 
         }
 
         private void Copy_Click(object sender, RoutedEventArgs e)
         {
+            if (PhotoFilePath.Length > 0)
+            {
+                MediaOperations.CopyToClipboard(PhotoFilePath);
+                // UNDONE: Visual Feedback - flash picture
+            }
+
         }
 
         private void Close_Click(object sender, RoutedEventArgs e)

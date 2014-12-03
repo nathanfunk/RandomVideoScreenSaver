@@ -90,23 +90,44 @@ namespace VideoScreensaver {
                 case Key.Right:
                     NextMediaItem();
                     break;
+
                 case Key.Left:
                     PreviousMediaItem();
                     break;
+
                 case Key.Up:
                 case Key.VolumeUp:
                     volume += 0.1;
                     break;
+
                 case Key.Down:
                 case Key.VolumeDown:
                     volume -= 0.1;
                     break;
+
                 case Key.VolumeMute:
                 case Key.D0:
                     volume = 0;
                     break;
+
                 case Key.I:     // Show information about current photo
                     ShowInfo();
+                    break;
+
+                case Key.D:     // Delete
+                    if (currentMediaPath.Length > 0) {
+                        logger.InfoFormat("ScrKeyDown - Delete {0}", currentMediaPath);
+                        MediaOperations.RecycleFile(currentMediaPath);
+                        // UNDONE: Visual Feedback - draw X through picture
+                    }
+                    break;
+
+                case Key.C:     // Copy
+                    if (currentMediaPath.Length > 0) {
+                        logger.InfoFormat("ScrKeyDown - Copy to clipboard {0}", currentMediaPath);
+                        MediaOperations.CopyToClipboard(currentMediaPath);
+                        // UNDONE: Visual Feedback - flash picture
+                    }
                     break;
 
                 default:
@@ -408,7 +429,7 @@ namespace VideoScreensaver {
             FileStream fs = new FileStream(fileName, FileMode.Open, FileAccess.Read, FileShare.Read);
             BitmapSource img = BitmapFrame.Create(fs);
             BitmapMetadata md = (BitmapMetadata)img.Metadata;
-            return md.Title;
+            return md.Title.TrimStart();
         }
     }
 }

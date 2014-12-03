@@ -3,16 +3,28 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-             mc:Ignorable="d" Height="135" Width="294">
-    <Grid HorizontalAlignment="Stretch" Background="Gold" VerticalAlignment="Center">
-        <StackPanel  VerticalAlignment="Center" HorizontalAlignment="Center"  Margin="5">
-            <TextBlock Name="Path" FontSize="20" />
-            <TextBlock Name="TimeTaken" FontSize="20" />
-            <TextBlock Name="Title" FontSize="20" />
-            <StackPanel Orientation="Horizontal">
+             mc:Ignorable="d" Height="120" Width="400"
+             Loaded="OnLoaded">
+    <Grid  VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Background="Gold">
+		<Grid.RowDefinitions>
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="Auto" />
+		</Grid.RowDefinitions>
+		<Grid.ColumnDefinitions>
+			<ColumnDefinition Width="80" />
+			<ColumnDefinition Width="Auto" />
+		</Grid.ColumnDefinitions>
+        <Label Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Content="Time Taken" Target="{Binding ElementName=TimeTaken}"  />
+        <TextBlock Grid.Row="0" Grid.Column="1" VerticalAlignment="Center" x:Name="TimeTaken" FontSize="12" Width="300"  />
+        <Label Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Content="File Path" Target="{Binding ElementName=Path}" />
+        <TextBlock Grid.Row="1" Grid.Column="1" VerticalAlignment="Center" x:Name="Path" FontFamily="Courier" FontSize="11" Width="300"  />
+        <Label Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Content="_Title" Target="{Binding ElementName=Title}" />
+        <TextBlock Grid.Row="2" Grid.Column="1" VerticalAlignment="Center" x:Name="Title" FontSize="12" Width="300"  />
+        <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Bottom" HorizontalAlignment="Right">
                 <Button Content="Copy" HorizontalAlignment="Left" Click="Copy_Click" Margin="10" />
                 <Button Content="Close" HorizontalAlignment="Right" IsCancel="True" Margin="10" />
-            </StackPanel>
         </StackPanel>
     </Grid>
 </UserControl>
