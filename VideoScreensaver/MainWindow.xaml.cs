@@ -14,6 +14,8 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using System.Timers;
+using System.Threading;
 using ExifLib;
 using log4net;
 using log4net.Config;
@@ -38,6 +40,8 @@ namespace VideoScreensaver {
         private int currentMediaIndex = 0;
 
         private bool showingInfoDialog = false;     // TRUE if showing properties for a picture
+
+        System.Windows.Threading.DispatcherTimer dispatcherTimer = null;
 
         private double volume {
             get { return FullScreenMedia.Volume; }
@@ -210,6 +214,12 @@ namespace VideoScreensaver {
             }
         }
 
+        // Callback from MediaElement - not currently used
+        private void MediaEnded(object sender, RoutedEventArgs e)
+        {
+            logger.Info("MediaEnded");
+        }
+
         private void GetAllVideos(String videoPath)
         {
             logger.Debug("GetAllVideos");
@@ -243,71 +253,103 @@ namespace VideoScreensaver {
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e) {
-            String videoPath = PreferenceManager.ReadVideoSettings();
-
-            logger.Info("OnLoaded");
-
-            if (videoPath.Length == 0)
+            try
             {
-                // Default to Pictures
-                videoPath = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
-            }
+                String videoPath = PreferenceManager.ReadVideoSettings();
+                string machineName = System.Environment.MachineName;
 
-            logger.InfoFormat("Path - {0}", videoPath);
+                logger.Info("OnLoaded");
 
-            if (!Directory.Exists(videoPath))
-            {
-                ShowError("This screensaver needs to be configured before anthing is displayed.");
-            }
-            else
-            {
-                // Is there a searilized list?
-                if (File.Exists("ScreenSaver.data.bin"))
+                if (videoPath.Length == 0)
                 {
-                    logger.Info("Cached pictures list exists");
-                    try
-	                {
-			            using (Stream stream = File.Open("ScreenSaver.data.bin", FileMode.Open))
-			            {
-			                BinaryFormatter bin = new BinaryFormatter();
-
-			                videoList = (VideoList)bin.Deserialize(stream);
-		                }
-                    }
-		            catch (IOException ex)
-		            {
-                        logger.Error("Deserializing video list", ex);
-		            }
-                    logger.InfoFormat("Read {0} picture paths from cached file", videoList.Count);
+                    // Default to Pictures
+                    videoPath = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
                 }
-                else 
+
+                logger.InfoFormat("Pictures Path - {0}", videoPath);
+
+                if (!Directory.Exists(videoPath))
                 {
-                    logger.Info("No cached pictures list exists - enumerating files");
-
-                    GetAllVideos(videoPath);
-
-                    // Serialize it to disk
-                    try
+                    ShowError("This screensaver needs to be configured before anthing is displayed.");
+                }
+                else
+                {
+                    // Is there a searilized list?
+                    if (File.Exists("ScreenSaver.data.bin"))
                     {
-                        logger.Info("Writing enumerated paths to disk cache");
-                        using (Stream stream = File.Open("ScreenSaver.data.bin", FileMode.Create))
+                        logger.Info("Cached pictures list exists");
+                        try
+	                    {
+			                using (Stream stream = File.Open("ScreenSaver.data.bin", FileMode.Open))
+			                {
+			                    BinaryFormatter bin = new BinaryFormatter();
+
+			                    videoList = (VideoList)bin.Deserialize(stream);
+
+                                if (videoList.MachineName == null ||
+                                    videoList.MachineName != machineName)
+                                {
+                                    // Not from this machine - throw it away
+                                    videoList.Clear();   // throw away any cached info, it will be rebuilt
+                                }
+		                    }
+                        }
+		                catch (IOException ex)
+		                {
+                            logger.Error("Deserializing video list", ex);
+                            videoList.Clear();   // throw away any cached info, it will be rebuilt
+		                }
+                        logger.InfoFormat("Read {0} picture paths from cached file", videoList.Count);
+                    }
+                }
+
+                if (videoList.Count == 0)
+                    {
+                        logger.Info("No cached pictures list exists - enumerating files");
+
+                        GetAllVideos(videoPath);
+
+                        videoList.MachineName = machineName;
+
+                        // Serialize it to disk
+                        try
                         {
-                            BinaryFormatter bin = new BinaryFormatter();
-                            bin.Serialize(stream, videoList);
+                            logger.Info("Writing enumerated paths to disk cache");
+                            using (Stream stream = File.Open("ScreenSaver.data.bin", FileMode.Create))
+                            {
+                                BinaryFormatter bin = new BinaryFormatter();
+                                bin.Serialize(stream, videoList);
+                            }
+                        }
+                        catch (IOException ex)
+                        {
+                            logger.Error("Serializing video list", ex);
                         }
                     }
-                    catch (IOException ex)
-                    {
-                        logger.Error("Serializing video list", ex);
-                    }
-                }
 
                 // Randomly reoder the list
                 videoList = (VideoList) videoList.ShuffleFilePaths();
 
                 GeneralData.Text = "File count: " + videoList.Count;
                 logger.InfoFormat("Starting screen show at {0}", (String)videoList[currentMediaIndex]);
+
+                // http://robertgreiner.com/2010/06/using-stopwatches-and-timers-in-net/
+                // We used to use a callback from showing the media to trigger the next one
+                // however, if anything fails in showing a picture, it doesn't make the call.
+                // So now we just have a timer go off
+                // UNDONE: Make the interval a configuration parameter
+
+                System.Windows.Threading.DispatcherTimer dispatcherTimer = new System.Windows.Threading.DispatcherTimer();
+                dispatcherTimer.Tick += new EventHandler(TimedAdvance);
+                dispatcherTimer.Interval = new TimeSpan(0,0,8);     // 8 seconds
+                dispatcherTimer.Start();
+
+                // UNDONE - what if this fails - consolidate error handling
                 SetNewMedia((String)videoList[currentMediaIndex]);
+            }
+            catch (Exception exp)
+            {
+                logger.Error("OnLoaded", exp);
             }
         }
 
@@ -320,12 +362,13 @@ namespace VideoScreensaver {
             }
         }
 
-        private void MediaEnded(object sender, RoutedEventArgs e) {
-            logger.Info("MediaEnded");
+        // Callback fromm timer to advance to media.
+        private void TimedAdvance(object sender, EventArgs e)
+        {
+            logger.Info("TimedAdvanceToNextMediaItem");
             if (!showingInfoDialog) {
                 NextMediaItem();
             }
-            //FullScreenMedia.Position = new TimeSpan(0);
         }
 
         private void NextMediaItem()
@@ -339,7 +382,18 @@ namespace VideoScreensaver {
                 currentMediaIndex++;
             }
             
-            SetNewMedia((String)videoList[currentMediaIndex]);
+            while (!SetNewMedia((String)videoList[currentMediaIndex])) {
+                // Skip bogus files
+                if (currentMediaIndex >= videoList.Count-1)
+                {
+                    // Gone through all of them - delete the cache
+                    break;
+                }
+                else
+                {
+                    currentMediaIndex++;
+                }
+            }
         }
 
         private void PreviousMediaItem()
@@ -353,10 +407,11 @@ namespace VideoScreensaver {
                 currentMediaIndex--;
             }
 
+            // UNDONE - handle failure
             SetNewMedia((String)videoList[currentMediaIndex]);
         }
 
-        private void SetNewMedia(String fileName)
+        private bool SetNewMedia(String fileName)
         {
             bool gotDate = false;
             bool gotCaption = false;
@@ -365,7 +420,18 @@ namespace VideoScreensaver {
 
             currentMediaPath = fileName;
 
-            FullScreenMedia.Source = new System.Uri(fileName);
+            System.Uri mediaUri = new System.Uri(fileName);
+
+            if (mediaUri.IsFile)
+            {
+                if (!File.Exists(fileName))
+                {
+                    logger.WarnFormat("SetNewMedia - {0} does not exist", fileName);
+                    return false;
+                }
+            }
+
+            FullScreenMedia.Source = mediaUri;
 
             // Read Metadata from the photo
             logger.InfoFormat("SetNewMedia - Extract meta data from {0}", fileName);
@@ -421,15 +487,35 @@ namespace VideoScreensaver {
                 }
           
             logger.Info("SetNewMedia - Exit");
+            return true;
         }
 
         // Get the string Title if present in the file
         private string GetTitle(string fileName)
         {
-            FileStream fs = new FileStream(fileName, FileMode.Open, FileAccess.Read, FileShare.Read);
-            BitmapSource img = BitmapFrame.Create(fs);
-            BitmapMetadata md = (BitmapMetadata)img.Metadata;
-            return md.Title.TrimStart();
+            try
+            {
+                FileStream fs = new FileStream(fileName, FileMode.Open, FileAccess.Read, FileShare.Read);
+                if (fs != null)
+                {
+                    BitmapSource img = BitmapFrame.Create(fs);
+
+                    if (img != null)
+                    {
+                        BitmapMetadata md = (BitmapMetadata)img.Metadata;
+
+                        if (md != null)
+                        {
+                            return md.Title.TrimStart();
+                        }
+                    }
+                }            
+            }
+            catch(Exception exp)
+            {
+                logger.Error("GetTitle", exp);
+            }
+            return string.Empty;
         }
     }
 }

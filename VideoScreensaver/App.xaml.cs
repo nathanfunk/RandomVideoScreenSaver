@@ -5,6 +5,10 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using log4net;
+using log4net.Appender;
+using log4net.Config;
+using log4net.Repository;
 
 namespace VideoScreensaver
 {
@@ -14,6 +18,10 @@ namespace VideoScreensaver
     /// </summary>
     public partial class App : Application
     {
+        // Logger
+        private static readonly ILog logger =
+           LogManager.GetLogger(typeof(App));
+
         [StructLayout(LayoutKind.Sequential)]
         private struct RECT {
             public int left, top, right, bottom;
@@ -34,8 +42,42 @@ namespace VideoScreensaver
         [DllImport("user32.dll")]
         private static extern int SetWindowLong(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
 
-        private void OnStartup(object sender, StartupEventArgs e) {
+        public App()
+            : base()
+        {
+            this.Dispatcher.UnhandledException += OnDispatcherUnhandledException;
+        }
+
+        void OnDispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
+        {
+            logger.Error("Unhandled Exception", e.Exception);
+            string errorMessage = string.Format("An unhandled exception occurred: {0}", e.Exception.Message);
+            MessageBox.Show(errorMessage, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            e.Handled = true;
+            FlushLogs();
+        }
+
+        // Flush Log4Net logs
+        void FlushLogs()
+        {
+            ILoggerRepository rep = LogManager.GetRepository();
+            foreach (IAppender appender in rep.GetAppenders())
+            {
+                var buffered = appender as BufferingAppenderSkeleton;
+                if (buffered != null)
+                {
+                    buffered.Flush();
+                }
+            }
+        }
+
+        private void OnStartup(object sender, StartupEventArgs e)
+        {
             bool debug = false;
+
+            // Initialize Log4Net Logger
+            XmlConfigurator.Configure();
+            logger.ErrorFormat("Start @ {0}", System.DateTime.Now.ToString());
 
             if (e.Args.Length > 0) {
                 switch (e.Args[0].Substring(0, 2).ToLower()) {

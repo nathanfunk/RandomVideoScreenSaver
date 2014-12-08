@@ -10,8 +10,19 @@ namespace VideoScreensaver
     [Serializable]
     class VideoList : ArrayList
     {
-        public VideoList(int count=0)
-            : base(count) { }
+        public string MachineName { get; set; }
+
+        public VideoList()
+            : base()
+        {
+            MachineName = "";
+        }
+
+        public VideoList(int capacity)
+            : base(capacity)
+        {
+            MachineName = "";
+        }
 
         public VideoList ShuffleFilePaths()
         {
@@ -33,6 +44,8 @@ namespace VideoScreensaver
 
             // Allocate new string array
             VideoList result = new VideoList(this.Count);
+
+            result.MachineName = MachineName;
 
             // Copy values to array
             foreach (KeyValuePair<int, string> pair in sorted)
