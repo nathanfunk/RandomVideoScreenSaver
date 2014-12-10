@@ -9,11 +9,12 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>VideoScreensaver</RootNamespace>
     <AssemblyName>VideoScreensaver</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <WarningLevel>4</WarningLevel>
     <ExpressionBlendVersion>12.0.50716.0</ExpressionBlendVersion>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -44,7 +45,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="ExifLib">
-      <HintPath>..\packages\ExifLib.1.6.3.0\lib\net45\ExifLib.dll</HintPath>
+      <HintPath>..\packages\ExifLib.1.6.3.0\lib\net40\ExifLib.dll</HintPath>
     </Reference>
     <Reference Include="log4net">
       <HintPath>third-party\log4net.dll</HintPath>
@@ -71,8 +72,15 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="HelpAbout.xaml.cs">
+      <DependentUpon>HelpAbout.xaml</DependentUpon>
+    </Compile>
     <Compile Include="MediaOperations.cs" />
     <Compile Include="VideoList.cs" />
+    <Page Include="HelpAbout.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -114,6 +122,7 @@
     </EmbeddedResource>
     <None Include="Design\projectGuides.guides" />
     <None Include="packages.config" />
+    <None Include="Post-Build.bat" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
@@ -127,6 +136,14 @@
     <Resource Include="feather_with_shadow.ico" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>"$(SolutionDir)\packages\ilmerge.2.14.1208\tools\ILMerge.exe" /out:"$(SolutionDir)deploy\$(TargetFileName)" "$(TargetDir)$(TargetFileName)" "$(TargetDir)*.dll" /target:exe /targetplatform:v4,C:\Windows\Microsoft.NET\Framework64\v4.0.30319 /wildcards &amp;&amp; copy "$(TargetDir)\$(TargetFileName).config" "$(SolutionDir)\deploy" &amp;&amp; move "$(SolutionDir)\deploy\$(TargetFileName)" "$(SolutionDir)\deploy\$(TargetName).SCR" &amp;&amp; move "$(SolutionDir)\deploy\$(TargetFileName).CONFIG" "$(SolutionDir)\deploy\$(TargetName).SCR.CONFIG" &amp;&amp; echo $(SolutionDir)\deploy has screen saver components.
+
+</PostBuildEvent>
+  </PropertyGroup>
+  <PropertyGroup>
+    <PreBuildEvent>if not exist "$(SolutionDir)deploy" mkdir "$(SolutionDir)deploy"</PreBuildEvent>
+  </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

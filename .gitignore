@@ -1,3 +1,5 @@
 /*.suo
 VideoScreensaver/bin/*
 VideoScreensaver/obj/*
+deploy/*
+packages/*

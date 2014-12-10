@@ -83,16 +83,23 @@ namespace VideoScreensaver
                 switch (e.Args[0].Substring(0, 2).ToLower()) {
                     case "/c":
                         // User clicked the "configure" button.
+                        logger.Info("/C passed");
                         ConfigureScreensaver();
                         Shutdown(0);
                         return;
                     case "/p":
                         // Previewing inside of a Win32 window specified by args[1].
+                        logger.Info("/P passed");
                         ShowInParent(new IntPtr(Convert.ToInt32(e.Args[1])));
                         return;
                     case "/d":
                         // Debugging - treat mouse movement differently
+                        logger.Info("/D passed");
                         debug = true;
+                        break;
+
+                    default:
+                        logger.ErrorFormat("Unknown command line option {0}", e.Args[0]);
                         break;
                 }
             }
@@ -101,6 +108,7 @@ namespace VideoScreensaver
             w.Show();
         }
 
+        // Used for Screen Saver preview
         private void ShowInParent(IntPtr parentHwnd) {
             MainWindow previewContent = new MainWindow(true);
             WindowInteropHelper windowHelper = new WindowInteropHelper(previewContent);
@@ -126,20 +134,16 @@ namespace VideoScreensaver
             SetForegroundWindow(currentFocus);
         }
 
+        // Screen Saver Configure button clicked
         private void ConfigureScreensaver() {
             String videoUri = PreferenceManager.ReadVideoSettings();
             System.Windows.Forms.FolderBrowserDialog folderDialog = new System.Windows.Forms.FolderBrowserDialog();
-            //Microsoft.Win32.OpenFileDialog openDialog = new Microsoft.Win32.OpenFileDialog();
-            //openDialog.Multiselect = true;
-            //openDialog.FileName = (videoUri.Count > 0) ? videoUri[0] : "";
-            //openDialog.Title = "Select root folder containing video files";
             folderDialog.SelectedPath = videoUri;
+            folderDialog.Description = "Select root folder containing pictures or videos";
 
             if (folderDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK) {
-                //List<String> videos = new List<String>();
-
-                //videos.AddRange(openDialog.FileNames);
                 PreferenceManager.WriteVideoSettings(folderDialog.SelectedPath);
+                logger.InfoFormat("Directory set to {0}", folderDialog.SelectedPath.ToString());
             }
         }
     }

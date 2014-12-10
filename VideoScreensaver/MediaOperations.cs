@@ -14,10 +14,9 @@ namespace VideoScreensaver
     {
         static public void RecycleFile(string filePath)
         {
-            Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(filePath,
-                        Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
-                        Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
-
+                Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(filePath,
+                            Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
+                            Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
         }
 
         // Put a file on the clipboard both as a text reprsentation (the path) and an

@@ -1,0 +1,59 @@
+﻿<Window x:Class="VideoScreensaver.HelpAbout"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="About Screen Saver" Height="427" Width="500" ResizeMode="NoResize">
+    <Grid>
+        <Label Content="Random Photo Screen Saver" HorizontalAlignment="Center" VerticalAlignment="Top" Height="30" Width="231" FontSize="16" FontWeight="Bold" Margin="135.5,0,125.5,0"/>
+        <TextBlock TextWrapping="WrapWithOverflow" HorizontalAlignment="Left" Margin="10,40,0,303" Width="472">
+			This screen saver shows photos and videos&#xD;&#xA;in a directory in a random order.&#xD;&#xA;For each photo, it shows the date the photo&#xD;&#xA;was taken and the title if this information is&#xD;&#xA;available.&#xD;&#xA;&#xD;&#xA;Commands available:&#xD;&#xA;
+		</TextBlock>
+	   <Grid Margin="5,95,5,5">
+		<Grid.RowDefinitions>
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="Auto" />
+		</Grid.RowDefinitions>
+		<Grid.ColumnDefinitions>
+			<ColumnDefinition Width="125" />
+			<ColumnDefinition Width="Auto" />
+		</Grid.ColumnDefinitions>
+        <Label Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Content="Left/Right Arrow" />
+        <TextBlock Grid.Row="0" Grid.Column="1" VerticalAlignment="Center" TextWrapping="WrapWithOverflow">
+			Move forward/backward in photo stream.
+		</TextBlock>
+        <Label Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Content="I" />
+        <TextBlock Grid.Row="1" Grid.Column="1" VerticalAlignment="Center" TextWrapping="WrapWithOverflow">
+			Show information about currently displayed photo.
+		</TextBlock>
+        <Label Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Content="D" />
+        <TextBlock Grid.Row="2" Grid.Column="1" VerticalAlignment="Center" TextWrapping="WrapWithOverflow">
+			Send current photo to Recycle Bin.
+		</TextBlock>
+        <Label Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Content="C" />
+        <TextBlock Grid.Row="3" Grid.Column="1" VerticalAlignment="Center" TextWrapping="WrapWithOverflow">
+			Copy path and image to clipboard for current photo.
+		</TextBlock>
+        <Label Grid.Row="4" Grid.Column="0" VerticalAlignment="Center" Content="? or H" />
+        <TextBlock Grid.Row="4" Grid.Column="1" VerticalAlignment="Center" TextWrapping="WrapWithOverflow">
+			This dialog.
+		</TextBlock>
+        <Label Grid.Row="5" Grid.Column="0" VerticalAlignment="Center" Content="ESC" />
+        <TextBlock Grid.Row="5" Grid.Column="1" VerticalAlignment="Center" TextWrapping="WrapWithOverflow">
+			Escape or mouse movement ends the show.
+		</TextBlock>
+		</Grid>
+        <TextBlock TextWrapping="WrapWithOverflow" FontStyle="Italic" HorizontalAlignment="Left" Margin="10,260,5,5" Width="472">
+			Written by Nathan Funk (nathan.funk@gmail.com) and Mike Kelly (mikekelly@msn.com)
+		</TextBlock>
+		<TextBlock TextWrapping="WrapWithOverflow" FontStyle="Italic" FontSize="8" Margin="10,290,5,5" Width="472">
+			Copyright (c) 2014 Mike Kelly &amp; Nathan Funk
+			Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+			The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+			THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+		</TextBlock>
+
+      </Grid>
+</Window>

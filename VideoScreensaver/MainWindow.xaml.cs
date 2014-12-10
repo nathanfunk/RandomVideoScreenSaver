@@ -43,6 +43,8 @@ namespace VideoScreensaver {
 
         System.Windows.Threading.DispatcherTimer dispatcherTimer = null;
 
+        private string cacheFileName;
+
         private double volume {
             get { return FullScreenMedia.Volume; }
             set {
@@ -84,6 +86,9 @@ namespace VideoScreensaver {
             FullScreenMedia.Volume = PreferenceManager.ReadVolumeSetting();
             if (preview) {
                 ShowError("When fullscreen, control volume with up/down arrows or mouse wheel.");
+                // Adjust sizes of text down
+                PictureInfo.FontSize = 9;
+                GeneralData.FontSize = 9;
             }
         }
 
@@ -118,11 +123,35 @@ namespace VideoScreensaver {
                     ShowInfo();
                     break;
 
+                case Key.H:
+                case Key.Help:
+                case Key.OemQuestion:
+                case Key.F1:
+                    ShowHelpAbout();
+                    break;
+
                 case Key.D:     // Delete
                     if (currentMediaPath.Length > 0) {
                         logger.InfoFormat("ScrKeyDown - Delete {0}", currentMediaPath);
-                        MediaOperations.RecycleFile(currentMediaPath);
-                        // UNDONE: Visual Feedback - draw X through picture
+                        try
+                        {
+                            string previousMediaPath = currentMediaPath;
+
+                            // Advance to free it from being held open by the MediaElement displaying it
+                            NextMediaItem();
+
+                            MediaOperations.RecycleFile(previousMediaPath);
+
+                            DrawRedX();
+                        }
+                        catch (OperationCanceledException exp)
+                        {
+                            // user cancelled
+                        }
+                        catch (InvalidOperationException exp)
+                        {
+                            ShowError(exp.Message);
+                        }
                     }
                     break;
 
@@ -139,6 +168,41 @@ namespace VideoScreensaver {
                     EndFullScreensaver();
                     break;
             }
+        }
+
+        private void DrawRedX()
+        {
+            Line line = new Line();
+            Thickness thickness = new Thickness(10);
+            line.Margin = thickness;
+            line.Visibility = System.Windows.Visibility.Visible;
+            line.StrokeThickness = 4;
+            line.Stroke = System.Windows.Media.Brushes.Red;
+            line.X1 = 0;
+            line.X2 = 0;
+            line.Y1 = this.ActualHeight;
+            line.Y2 = this.ActualWidth;
+            MainGrid.Children.Add(line);
+        }
+
+        // Show the Help/About window
+        private void ShowHelpAbout()
+        {
+            showingInfoDialog = true;           // stop the show
+
+            Window helpAboutWindow = new HelpAbout();
+
+            helpAboutWindow.ShowDialog();
+
+            logger.Info("Help/About dismissed");
+
+            showingInfoDialog = false;
+
+            // don't immediately see a mouse move
+            lastMousePosition = null;
+
+            // Advance since we've stopped auto advancing while the properties dialog was up
+            NextMediaItem();
         }
 
         private void ShowInfo()
@@ -275,12 +339,20 @@ namespace VideoScreensaver {
                 else
                 {
                     // Is there a searilized list?
-                    if (File.Exists("ScreenSaver.data.bin"))
+                    DirectoryInfo appDataFolder = new DirectoryInfo(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\VideoScreenSaver");
+                    if (!appDataFolder.Exists)
                     {
-                        logger.Info("Cached pictures list exists");
+                        appDataFolder.Create();
+                    }
+
+                    cacheFileName = System.IO.Path.Combine(appDataFolder.ToString(), "ScreenSaver.data.bin");
+
+                    if (File.Exists(cacheFileName))
+                    {
+                        logger.InfoFormat("Cached pictures list {0} exists", cacheFileName);
                         try
 	                    {
-			                using (Stream stream = File.Open("ScreenSaver.data.bin", FileMode.Open))
+                            using (Stream stream = File.Open(cacheFileName, FileMode.Open))
 			                {
 			                    BinaryFormatter bin = new BinaryFormatter();
 
@@ -305,7 +377,7 @@ namespace VideoScreensaver {
 
                 if (videoList.Count == 0)
                     {
-                        logger.Info("No cached pictures list exists - enumerating files");
+                        logger.InfoFormat("No cached pictures list {0} exists - enumerating files", cacheFileName);
 
                         GetAllVideos(videoPath);
 
@@ -315,7 +387,7 @@ namespace VideoScreensaver {
                         try
                         {
                             logger.Info("Writing enumerated paths to disk cache");
-                            using (Stream stream = File.Open("ScreenSaver.data.bin", FileMode.Create))
+                            using (Stream stream = File.Open(cacheFileName, FileMode.Create))
                             {
                                 BinaryFormatter bin = new BinaryFormatter();
                                 bin.Serialize(stream, videoList);
@@ -339,7 +411,7 @@ namespace VideoScreensaver {
                 // So now we just have a timer go off
                 // UNDONE: Make the interval a configuration parameter
 
-                System.Windows.Threading.DispatcherTimer dispatcherTimer = new System.Windows.Threading.DispatcherTimer();
+                dispatcherTimer = new System.Windows.Threading.DispatcherTimer();
                 dispatcherTimer.Tick += new EventHandler(TimedAdvance);
                 dispatcherTimer.Interval = new TimeSpan(0,0,8);     // 8 seconds
                 dispatcherTimer.Start();
