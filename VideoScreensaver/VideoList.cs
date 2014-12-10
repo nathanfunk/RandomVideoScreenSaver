@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -22,6 +23,18 @@ namespace VideoScreensaver
             : base(capacity)
         {
             MachineName = "";
+        }
+
+        static public string GetCacheFileName()
+        {
+            // Generate path to local app data cache of video paths.
+            DirectoryInfo appDataFolder = new DirectoryInfo(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\VideoScreenSaver");
+            if (!appDataFolder.Exists)
+            {
+                appDataFolder.Create();
+            }
+
+            return System.IO.Path.Combine(appDataFolder.ToString(), "ScreenSaver.data.bin");
         }
 
         public VideoList ShuffleFilePaths()

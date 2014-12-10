@@ -84,14 +84,41 @@ namespace VideoScreensaver
                     case "/c":
                         // User clicked the "configure" button.
                         logger.Info("/C passed");
+                        
                         ConfigureScreensaver();
+
+                        // Since path may have changed, invalidate any cached pictures
+                        string videoCachePath = VideoList.GetCacheFileName();
+                        bool fContinue = false;
+
+                        do
+                        {
+                            try
+                            {
+                                logger.Info("Deleting cache file after configuration change " + videoCachePath);
+                                System.IO.File.Delete(videoCachePath);
+                                fContinue = false;
+                            }
+                            catch (Exception exp)
+                            {
+                                logger.Error("Deleting cache file after configuration change " + videoCachePath, exp);
+
+                                MessageBoxResult result = MessageBox.Show(
+                                    "Error deleting video cache - " + videoCachePath + ".   If you changed the path for videos, it may not be used until this file is removed.  Try removing it again?",
+                                    "Error", MessageBoxButton.YesNo, MessageBoxImage.Error);
+                                fContinue = result == MessageBoxResult.Yes;
+                            }
+                        } while (fContinue);
+
                         Shutdown(0);
                         return;
+
                     case "/p":
                         // Previewing inside of a Win32 window specified by args[1].
                         logger.Info("/P passed");
                         ShowInParent(new IntPtr(Convert.ToInt32(e.Args[1])));
                         return;
+
                     case "/d":
                         // Debugging - treat mouse movement differently
                         logger.Info("/D passed");

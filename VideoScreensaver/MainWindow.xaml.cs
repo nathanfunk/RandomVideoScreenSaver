@@ -43,7 +43,18 @@ namespace VideoScreensaver {
 
         System.Windows.Threading.DispatcherTimer dispatcherTimer = null;
 
-        private string cacheFileName;
+        private string cacheFileName = null;
+
+        // Populate path to cache video list
+        public string EnsureCacheFileName()
+        {
+            if (cacheFileName == null)
+            {
+                cacheFileName = VideoList.GetCacheFileName();
+            }
+
+            return cacheFileName;
+        }
 
         private double volume {
             get { return FullScreenMedia.Volume; }
@@ -56,23 +67,6 @@ namespace VideoScreensaver {
         private string currentMediaPath;
         private DateTime currentMediaDateTaken;
         private string currentMediaTitle;
-
-        // Force logging of a string regardless of level setting configured in Log4Net
-        // See http://stackoverflow.com/questions/4229194/usage-of-log4net-to-always-log-a-value
-        private void ForceLog(string s)
-        {
-            // Temporarily Reset the level to ALL
-            log4net.ILog log = logger;
-            log4net.Repository.Hierarchy.Logger l = (log4net.Repository.Hierarchy.Logger)log.Logger;
-            var oldLevel = l.Level;
-            l.Level = l.Hierarchy.LevelMap["ALL"];
-
-            // Output message to log
-            logger.Info(s);
-
-            // Reset back to old logging level
-            l.Level = oldLevel;
-        }
 
         public MainWindow(bool preview) {
             // Initialize Log4Net Logger
@@ -140,16 +134,18 @@ namespace VideoScreensaver {
                             // Advance to free it from being held open by the MediaElement displaying it
                             NextMediaItem();
 
-                            MediaOperations.RecycleFile(previousMediaPath);
+                            logger.InfoFormat("Sending {0} to recycle bin", previousMediaPath);
 
-                            DrawRedX();
+                            MediaOperations.RecycleFile(previousMediaPath);
                         }
                         catch (OperationCanceledException exp)
                         {
+                            logger.Error("Recycle File", exp);
                             // user cancelled
                         }
                         catch (InvalidOperationException exp)
                         {
+                            logger.Error("Recycle File", exp);
                             ShowError(exp.Message);
                         }
                     }
@@ -168,21 +164,6 @@ namespace VideoScreensaver {
                     EndFullScreensaver();
                     break;
             }
-        }
-
-        private void DrawRedX()
-        {
-            Line line = new Line();
-            Thickness thickness = new Thickness(10);
-            line.Margin = thickness;
-            line.Visibility = System.Windows.Visibility.Visible;
-            line.StrokeThickness = 4;
-            line.Stroke = System.Windows.Media.Brushes.Red;
-            line.X1 = 0;
-            line.X2 = 0;
-            line.Y1 = this.ActualHeight;
-            line.Y2 = this.ActualWidth;
-            MainGrid.Children.Add(line);
         }
 
         // Show the Help/About window
@@ -320,7 +301,6 @@ namespace VideoScreensaver {
             try
             {
                 String videoPath = PreferenceManager.ReadVideoSettings();
-                string machineName = System.Environment.MachineName;
 
                 logger.Info("OnLoaded");
 
@@ -334,94 +314,118 @@ namespace VideoScreensaver {
 
                 if (!Directory.Exists(videoPath))
                 {
-                    ShowError("This screensaver needs to be configured before anthing is displayed.");
+                    ShowError("This screensaver needs to be configured before anything can be displayed.");
                 }
                 else
                 {
-                    // Is there a searilized list?
-                    DirectoryInfo appDataFolder = new DirectoryInfo(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\VideoScreenSaver");
-                    if (!appDataFolder.Exists)
+                    if (!TryDeserializeVideoList() || videoList.Count == 0)
                     {
-                        appDataFolder.Create();
+                        // Build the list of videos from the given root path.
+                        BuildVideoList(videoPath);
                     }
 
-                    cacheFileName = System.IO.Path.Combine(appDataFolder.ToString(), "ScreenSaver.data.bin");
+                    // Randomly reoder the list
+                    videoList = (VideoList)videoList.ShuffleFilePaths();
 
-                    if (File.Exists(cacheFileName))
-                    {
-                        logger.InfoFormat("Cached pictures list {0} exists", cacheFileName);
-                        try
-	                    {
-                            using (Stream stream = File.Open(cacheFileName, FileMode.Open))
-			                {
-			                    BinaryFormatter bin = new BinaryFormatter();
+                    // GeneralData.Text = "File count: " + videoList.Count;
+                    logger.InfoFormat("VideoList has {0} items", videoList.Count);
+                    logger.InfoFormat("Starting screen show at {0}", (String)videoList[currentMediaIndex]);
 
-			                    videoList = (VideoList)bin.Deserialize(stream);
+                    // http://robertgreiner.com/2010/06/using-stopwatches-and-timers-in-net/
+                    // We used to use a callback from showing the media to trigger the next one
+                    // however, if anything fails in showing a picture, it doesn't make the call.
+                    // So now we just have a timer go off
+                    // UNDONE: Make the interval a configuration parameter
 
-                                if (videoList.MachineName == null ||
-                                    videoList.MachineName != machineName)
-                                {
-                                    // Not from this machine - throw it away
-                                    videoList.Clear();   // throw away any cached info, it will be rebuilt
-                                }
-		                    }
-                        }
-		                catch (IOException ex)
-		                {
-                            logger.Error("Deserializing video list", ex);
-                            videoList.Clear();   // throw away any cached info, it will be rebuilt
-		                }
-                        logger.InfoFormat("Read {0} picture paths from cached file", videoList.Count);
-                    }
+                    dispatcherTimer = new System.Windows.Threading.DispatcherTimer();
+                    dispatcherTimer.Tick += new EventHandler(TimedAdvance);
+                    dispatcherTimer.Interval = new TimeSpan(0, 0, 8);     // 8 seconds
+                    dispatcherTimer.Start();
+
+                    // UNDONE - what if this fails - consolidate error handling
+                    SetNewMedia((String)videoList[currentMediaIndex]);
                 }
-
-                if (videoList.Count == 0)
-                    {
-                        logger.InfoFormat("No cached pictures list {0} exists - enumerating files", cacheFileName);
-
-                        GetAllVideos(videoPath);
-
-                        videoList.MachineName = machineName;
-
-                        // Serialize it to disk
-                        try
-                        {
-                            logger.Info("Writing enumerated paths to disk cache");
-                            using (Stream stream = File.Open(cacheFileName, FileMode.Create))
-                            {
-                                BinaryFormatter bin = new BinaryFormatter();
-                                bin.Serialize(stream, videoList);
-                            }
-                        }
-                        catch (IOException ex)
-                        {
-                            logger.Error("Serializing video list", ex);
-                        }
-                    }
-
-                // Randomly reoder the list
-                videoList = (VideoList) videoList.ShuffleFilePaths();
-
-                GeneralData.Text = "File count: " + videoList.Count;
-                logger.InfoFormat("Starting screen show at {0}", (String)videoList[currentMediaIndex]);
-
-                // http://robertgreiner.com/2010/06/using-stopwatches-and-timers-in-net/
-                // We used to use a callback from showing the media to trigger the next one
-                // however, if anything fails in showing a picture, it doesn't make the call.
-                // So now we just have a timer go off
-                // UNDONE: Make the interval a configuration parameter
-
-                dispatcherTimer = new System.Windows.Threading.DispatcherTimer();
-                dispatcherTimer.Tick += new EventHandler(TimedAdvance);
-                dispatcherTimer.Interval = new TimeSpan(0,0,8);     // 8 seconds
-                dispatcherTimer.Start();
-
-                // UNDONE - what if this fails - consolidate error handling
-                SetNewMedia((String)videoList[currentMediaIndex]);
             }
             catch (Exception exp)
             {
                 logger.Error("OnLoaded", exp);
+            }
+        }
+
+        // Try to read a previously serialized list of videos from the cached file
+        // returns true if successfully read the data, false otherwise (in which
+        // case it should be rebuilt by enumerating the file system, then saved for
+        // use on next launch)
+        private bool TryDeserializeVideoList()
+        {
+            string machineName = System.Environment.MachineName;
+            bool fRet = false;
+
+            EnsureCacheFileName();
+
+            if (File.Exists(cacheFileName))
+            {
+                logger.InfoFormat("Cached pictures list {0} exists", cacheFileName);
+                try
+	            {
+                    using (Stream stream = File.Open(cacheFileName, FileMode.Open))
+			        {
+			            BinaryFormatter bin = new BinaryFormatter();
+
+			            videoList = (VideoList)bin.Deserialize(stream);
+
+                        if (videoList.MachineName == null ||
+                            videoList.MachineName != machineName)
+                        {
+                            // Not from this machine - throw it away
+                            videoList.Clear();   // throw away any cached info, it will be rebuilt
+                        }
+                        else
+                        {
+                            fRet = true;
+                        }
+		            }
+                }
+		        catch (IOException ex)
+		        {
+                    logger.Error("Deserializing video list", ex);
+                    videoList.Clear();   // throw away any cached info, it will be rebuilt
+		        }
+                logger.InfoFormat("Read {0} picture paths from cached file", videoList.Count);
+            }
+
+            return fRet;
+        }
+
+        // Build the video list by enumerating the file system starting at videoPath and then
+        // save it in a serialized format.
+        // UNDONE: Make this a background thread to avoid blocking the UI for a long time on first launch
+        // if there are a lot of files under videoPath.
+        private void BuildVideoList(string videoPath)
+        {
+            string machineName = System.Environment.MachineName;
+
+            EnsureCacheFileName();
+
+            logger.InfoFormat("No cached pictures list {0} exists - enumerating files", cacheFileName);
+
+            GetAllVideos(videoPath);
+
+            videoList.MachineName = machineName;
+
+            // Serialize it to disk
+            try
+            {
+                logger.Info("Writing enumerated paths to disk cache");
+                using (Stream stream = File.Open(cacheFileName, FileMode.Create))
+                {
+                    BinaryFormatter bin = new BinaryFormatter();
+                    bin.Serialize(stream, videoList);
+                }
+            }
+            catch (IOException ex)
+            {
+                logger.Error("Serializing video list", ex);
             }
         }
 
@@ -588,6 +592,23 @@ namespace VideoScreensaver {
                 logger.Error("GetTitle", exp);
             }
             return string.Empty;
+        }
+
+        // Force logging of a string regardless of level setting configured in Log4Net
+        // See http://stackoverflow.com/questions/4229194/usage-of-log4net-to-always-log-a-value
+        private void ForceLog(string s)
+        {
+            // Temporarily Reset the level to ALL
+            log4net.ILog log = logger;
+            log4net.Repository.Hierarchy.Logger l = (log4net.Repository.Hierarchy.Logger)log.Logger;
+            var oldLevel = l.Level;
+            l.Level = l.Hierarchy.LevelMap["ALL"];
+
+            // Output message to log
+            logger.Info(s);
+
+            // Reset back to old logging level
+            l.Level = oldLevel;
         }
     }
 }
