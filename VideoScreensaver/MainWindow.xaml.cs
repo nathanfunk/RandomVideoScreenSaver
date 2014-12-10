@@ -545,7 +545,7 @@ namespace VideoScreensaver {
                         }
                     }
                 }
-                catch(ExifLibException exp)
+                catch(Exception exp)
                 {
                     logger.ErrorFormat("SetNewMedia Reading EXIF info from {0}", fileName, exp.Message);
                 }
